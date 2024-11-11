@@ -1,0 +1,327 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+#define MAX_USERS 100
+#define MAX_NAME_LENGTH 50
+#define MAX_PASSWORD_LENGTH 50
+#define MIN_PASSWORD_LENGTH 6
+#define age_key 25
+
+// Estrutura de dados para armazenar nome, senha criptografada e salt
+typedef struct {
+    char nome[MAX_NAME_LENGTH];
+    char senha[MAX_PASSWORD_LENGTH];
+    int idade; // Armazenar idade diretamente
+} Usuario;
+
+Usuario usuarios[MAX_USERS];
+int totalUsuarios = 0;
+
+// Função para salvar no arquivo txt
+void salvarUsuarios() {
+    FILE *file;
+    file = fopen("arquivodeusuarios.txt", "w");
+
+    if (file == NULL) {
+        
+        perror("Erro ao abrir o arquivo para escrita");
+        return;
+    }
+
+    for (int i = 0; i < totalUsuarios; i++) {
+        fprintf(file, "%s %s %d\n", usuarios[i].nome, usuarios[i].senha, usuarios[i].idade);
+    }
+
+    fclose(file);
+    printf("Usuarios salvos no arquivo 'arquivodeusuarios.txt'.\n");
+}
+
+// Função para carregar no arquivo
+void carregarUsuarios() {
+    FILE *file = fopen("arquivodeusuarios.txt", "r"); 
+    if (file == NULL) {
+        printf("Nenhum arquivo encontrado para carregar.\n");
+        return;
+    }
+
+    while (fscanf(file, "%s %s %d", usuarios[totalUsuarios].nome, usuarios[totalUsuarios].senha, &usuarios[totalUsuarios].idade) != EOF) {
+        totalUsuarios++;
+        if (totalUsuarios >= MAX_USERS) break;
+    }
+
+    fclose(file);
+    printf("Usuarios carregados do arquivo 'usuarios.txt'.\n");
+}
+
+//Validação de Senhas
+int validapassword (char *password) {
+	int compri = strlen(password);
+	int maius = 0;
+	int minus = 0;
+	int num = 0; 
+	int carac = 0;
+	
+	if (compri < MIN_PASSWORD_LENGTH) {
+		printf("A senha necessita de pelo menos %d caracteres. \n", MIN_PASSWORD_LENGTH);
+		return 0;	
+	}
+	
+	for (int i = 0; i < compri; i++){
+		if(isupper(password[i])) maius = 1;
+		else if (islower(password[i])) minus = 1;
+		else if (isdigit(password[i])) num = 1;
+		else if (ispunct(password[i])) carac = 1;
+	}	
+	
+	if(!maius){
+		printf("ERRO: A senha deve conter pelo menos 1 caractere MAIUSCLO. \n");
+		return 0;	
+	}
+	
+	if(!minus){
+		printf("ERRO: A senha deve conter pelo menos 1 caractere MINUSCULO. \n");
+		return 0;
+	}
+	
+	if(!num){
+		printf("ERRO: A senha deve conter pelo menos 1 caractere NUMERICO. \n");
+		return 0;
+	}
+	
+	if(!carac){
+		printf("ERRO: A senha deve conter pelo menos 1 caractere ESPECIAL. \n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+// Função para criptografar uma string
+void criptografar(char *str, int idade) {
+    for (int i = 0; i < strlen(str); i++) {
+        str[i] += idade;  // Soma a idade ao código ASCII do caractere
+    }
+}
+
+// Função para descriptografar uma string
+void descriptografar(char *str, int idade) {
+    for (int i = 0; i < strlen(str); i++) {
+        str[i] -= idade;  // Subtrai a idade do código ASCII do caractere
+    }
+}
+
+//Função para criptografar o Nome e a Idade
+void cripto(char *str, int chave) {
+    for (int i = 0; i < strlen(str); i++) {
+        str[i] ^= chave;  
+ 	}
+ }
+//Descriptografa o nome e a idade 
+ void descripto(char *str, int chave) {
+    for (int i = 0; i < strlen(str); i++) {
+        str[i] ^= chave; 
+    }
+}
+//Função para Criptografar a idade e descriptografa-la 
+int criptoage(int idade) {
+    return idade + age_key;
+}
+    
+int descriptoage(int criptoage) {
+    return criptoage - age_key;
+}
+
+// Função para cadastrar um novo usuário
+void cadastrarUsuario() {
+    if (totalUsuarios >= MAX_USERS) {
+        printf("Limite de usuarios atingido!\n");
+        return;
+    }
+
+    char nome[MAX_NAME_LENGTH];
+    char senha[MAX_PASSWORD_LENGTH];
+    char dataNascimento[9]; // Formato DDMMAAAA
+
+    printf("\nDigite o nome do usuario: ");
+    scanf("%s", nome);
+    do{
+    	printf("\nATENCAO: Sua senha deve conter pelo menos 1 letra MAIUSCULA, 1 letra MINUSCULA, 1 NUMERO e 1 caracter especial. ");
+    	printf("\nDigite a senha do usuario: ");
+    	scanf("%s", senha);
+	} while (!validapassword(senha));
+	
+    printf("\nDigite a data de nascimento (DDMMAAAA, sem barras): ");
+    scanf("%s", dataNascimento);
+    
+    // Calcular idade
+    int dia, mes, ano;
+    sscanf(dataNascimento, "%2d%2d%4d", &dia, &mes, &ano);
+    int idade = 2024 - ano; // Considerando que o ano atual é 2024
+
+    // Criptografar a senha
+    criptografar(senha, idade);
+    cripto(nome,idade);
+    int criptoidade = criptoage(idade);
+
+    // Armazenar o novo usuário
+    strcpy(usuarios[totalUsuarios].nome, nome);
+    strcpy(usuarios[totalUsuarios].senha, senha);
+    usuarios[totalUsuarios].idade = criptoidade;
+
+    totalUsuarios++;
+
+    printf("\nUsuario cadastrado com sucesso!\n");
+}
+
+// Função para mostrar os usuários
+void mostrarUsuarios() {
+    if (totalUsuarios == 0) {
+        printf("Nenhum usuario cadastrado.\n");
+        return;
+    }
+
+    printf("\n--- Lista de Usuarios ---\n");
+    char opcao;
+
+    // Exibir os dados como criptografados por padrão
+    for (int i = 0; i < totalUsuarios; i++) {
+        printf("Nome Criptografado: %s, Senha Criptografada: %s, Idade Criptografada: %d\n",
+               usuarios[i].nome, usuarios[i].senha, usuarios[i].idade);
+    }
+
+    printf("Deseja exibir os dados originais? Pressione '@' para sim ou qualquer outra tecla para nao: ");
+    getchar(); // Limpar buffer
+    opcao = getchar();
+
+    if (opcao == '@') {
+        for (int i = 0; i < totalUsuarios; i++) {
+        	char nomedescripto[MAX_NAME_LENGTH];
+            char senhaDescriptografada[MAX_PASSWORD_LENGTH];
+            
+          	strcpy(nomedescripto, usuarios[i].nome);
+            descripto(nomedescripto, descriptoage(usuarios[i].idade));
+            
+            strcpy(senhaDescriptografada, usuarios[i].senha);
+            descriptografar(senhaDescriptografada, descriptoage(usuarios[i].idade));
+        
+            int idadeOriginal = descriptoage(usuarios[i].idade);  
+            
+            printf("Nome: %s, Senha: %s, Idade: %d\n", nomedescripto, senhaDescriptografada, idadeOriginal);
+        }
+    }
+}
+
+// Função para atualizar a senha de um usuário
+void atualizarSenha() {
+    char nome[MAX_NAME_LENGTH];
+    char novaSenha[MAX_PASSWORD_LENGTH];
+
+    printf("Digite o nome do usuario cuja senha deseja atualizar: ");
+    scanf("%s", nome);
+
+    for (int i = 0; i < totalUsuarios; i++) {
+    	char nomeDescriptografado[MAX_NAME_LENGTH];
+        strcpy(nomeDescriptografado, usuarios[i].nome);
+        
+        descripto(nomeDescriptografado, descriptoage(usuarios[i].idade));
+    	
+        if (strcmp(nomeDescriptografado, nome) == 0) {
+            printf("Digite a nova senha: ");
+            scanf("%s", novaSenha);
+            
+            //Vai verificar se a nova senha atende ao que é pedido
+            if (!validapassword(novaSenha)) {
+                printf("A nova senha nao atende aos requisitos minimos.\n");
+                return;
+}
+
+            // Criptografar a nova senha
+			int idadeOriginal = descriptoage(usuarios[i].idade);
+            criptografar(novaSenha, idadeOriginal);
+            
+            // Atualizar a senha
+             strcpy(usuarios[i].senha, novaSenha);
+            printf("Senha atualizada com sucesso!\n");
+            return;
+        }	
+    }
+
+    printf("Usuario nao encontrado!\n");
+}
+
+// Função para excluir um usuário
+void excluirUsuario() {
+    char nome[MAX_NAME_LENGTH];
+    char novaSenha[MAX_PASSWORD_LENGTH];
+
+    printf("Digite o nome do usuario que deseja excluir: ");
+    scanf("%s", nome);
+
+    for (int i = 0; i < totalUsuarios; i++) {
+    	char nomeDescriptografado[MAX_NAME_LENGTH];
+        strcpy(nomeDescriptografado, usuarios[i].nome);
+        
+    	descripto(nomeDescriptografado, descriptoage(usuarios[i].idade));
+    	
+        if (strcmp(nomeDescriptografado, nome) == 0) {
+            // Desloca os usuários para "remover" o usuário
+            for (int j = i; j < totalUsuarios - 1; j++) {
+                usuarios[j] = usuarios[j + 1];
+            }
+            totalUsuarios--;
+            printf("Usuario excluido com sucesso!\n");
+            return;
+        }
+    }
+
+    printf("Usuario nao encontrado!\n");
+}
+
+// Função principal para menu de opções
+int main(){
+    int opcao;
+    
+    carregarUsuarios();
+
+    
+    do {
+    	printf("\n=============================================\n");
+        printf("\nSistema de Gerenciamento de Perfis (CRUD)\n");
+        printf("\n=============================================\n");
+        printf("1. Cadastrar novo usuario\n");
+        printf("2. Mostrar todos os usuarios\n");
+        printf("3. Atualizar senha de usuario\n");
+        printf("4. Excluir usuario\n");
+    	printf("5. Sair\n");
+    	printf("----------------------------------------------");
+        printf("\nEscolha uma opcao [1-5]: ");
+        scanf("%d", &opcao);
+        
+	
+        switch (opcao) {
+            case 1:
+                cadastrarUsuario();
+                break;
+            case 2:
+                mostrarUsuarios();
+                break;
+            case 3:
+                atualizarSenha();
+                break;
+            case 4:
+                excluirUsuario();
+                break;
+            case 5:
+                printf("Saindo...\n");
+                break;
+            default:
+                printf("Opcao invalida!\n");
+        }
+    } while (opcao != 5);
+    
+    salvarUsuarios();
+    
+    return 0;
+}
